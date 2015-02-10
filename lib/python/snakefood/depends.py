@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Routines that manipulate, read and convert lists of dependencies.
 """
@@ -6,7 +8,8 @@ Routines that manipulate, read and convert lists of dependencies.
 
 import sys, logging
 from operator import itemgetter
-
+from snakefood.six import iteritems
+from functools import total_ordering
 
 
 def read_depends(f):
@@ -22,9 +25,9 @@ def output_depends(depdict):
     output file."""
     # Output the dependencies.
     write = sys.stdout.write
-    for (from_root, from_), targets in sorted(depdict.iteritems(),
+    for (from_root, from_), targets in sorted(iteritems(depdict),
                                              key=itemgetter(0)):
-        for to_root, to_ in sorted(targets):
+        for to_root, to_ in sorted(targets, key=lambda p: ("","") if p[0] is None else p):
             write(repr( ((from_root, from_), (to_root, to_)) ))
             write('\n')
 

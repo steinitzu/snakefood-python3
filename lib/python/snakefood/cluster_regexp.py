@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Cluster dependencies by regular expression.
 """
@@ -6,9 +8,8 @@ Cluster dependencies by regular expression.
 
 import sys
 import re
-from itertools import imap
+from collections import defaultdict
 
-from snakefood.fallback.collections import defaultdict
 from snakefood.depends import read_depends, output_depends
 
 

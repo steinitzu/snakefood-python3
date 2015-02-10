@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Code that deals with search and classifying root directories.
 """
@@ -5,8 +7,8 @@ Code that deals with search and classifying root directories.
 # See http://furius.ca/snakefood/ for licensing details.
 
 import os, logging
-from os.path import *
-from dircache import listdir
+from os import listdir
+from os.path import realpath, isfile, dirname, isdir, exists, join, basename
 
 from snakefood.util import is_python, filter_separate
 
@@ -69,7 +71,6 @@ def is_package_dir(dn):
     """Return true if this is a directory within a package."""
     return exists(join(dn, '__init__.py'))
 
-
 def is_package_root(dn, ignores):
     """Return true if this is a package root.  A package root is a directory
     that could be used as a PYTHONPATH entry."""
@@ -78,6 +79,7 @@ def is_package_root(dn, ignores):
         return False
 
     else:
+        # TODO listdir was cached with Python 2's dircache module, alternative?
         dirfiles = (join(dn, x) for x in listdir(dn))
         subdirs, files = filter_separate(isdir, dirfiles)
 

@@ -1,18 +1,23 @@
+from __future__ import print_function, absolute_import
+
 """
 Functional test for Python checker.
 """
 
 import os
-from testsupport import *
+import ast
+from os.path import join
+from .testsupport import data, compare_expect
 
-from snakefood.checker import *
 from snakefood.find import ImportVisitor
+from snakefood.local import NamesVisitor
+import snakefood.checker
 
 
 def visit_source(source, cls):
-    mod = compiler.parse(source)
+    mod = ast.parse(source)
     vis = cls()
-    compiler.walk(mod, vis)
+    vis.visit(mod)
     return vis.finalize()
 
 _import_tests = (
@@ -27,9 +32,16 @@ _import_tests = (
     ('import os.path', ['os.path']),
     )
 
-_names_tests = (
+_names_tests = [
     ('fn = os.path.join("a", "b")', ['os', 'os.path', 'os.path.join']),
-    ('a = 1; print b.c ; d.e = 3', ['b', 'b.c', 'd']),
+    ]
+if snakefood.six.PY2:
+    _names_tests.append(
+        ('a = 1; print b.c ; d.e = 3', ['b', 'b.c', 'd']) # FIXME why not also d.e?
+    )
+else:
+    _names_tests.append(
+        ('a = 1; print(b.c) ; d.e = 3', ['b', 'b.c', 'd'])
     )
 
 def test_checker_functional():
@@ -52,7 +64,8 @@ def test_checker_expected():
                  os.listdir(checkdir) if fn.endswith('.py')]
 
     for fn in pytocheck:
-        print 'Testing checker on: %s' % fn
+        print('Testing checker on: %s' % fn)
         compare_expect(None, fn.replace('.py', '.expect'),
-                       'sfood-checker', fn, filterdir=(data, 'ROOT'))
+                       snakefood.checker.main, #'sfood-checker', 
+                       fn, filterdir=(data, 'ROOT'))
 

@@ -1,10 +1,16 @@
+from __future__ import print_function, absolute_import
+
 """
 Support routines for all tests.
 """
 
-import sys, os, re
-from os.path import *
-from subprocess import *
+import re
+import os
+from os.path import exists, join, dirname, abspath
+import sys
+from subprocess import PIPE, Popen
+from snakefood.six import StringIO, reraise
+import traceback
 
 
 __all__ = ('data', 'find_dirs', 'run_sfood', 'compare_expect')
@@ -42,20 +48,41 @@ def run_sfood(*args, **kw):
     If 'filterdir' is provided, remove those strings are replaced in the output.
     """
     filterdir = kw.get('filterdir', None)
-    cmd = [join(bindir, args[0])] + list(args[1:])
-    print >> sys.stderr, 'Running cmd:'
-    print >> sys.stderr, ' '.join(cmd)
-    print >> sys.stderr
-    p = Popen(cmd, shell=False, stdout=PIPE, stderr=PIPE)
-    out, log = p.communicate()
+    if callable(args[0]):
+        sys.argv, oldargv = list(args), sys.argv
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = mystdout = StringIO()
+        sys.stderr = mystderr = StringIO()
+        try:
+            args[0]() # run main()
+        except:
+            t, e, tb = sys.exc_info()
+        else:
+            e = None
+        out, log = mystdout.getvalue(), mystderr.getvalue()
+        mystdout.close()
+        mystderr.close()
+        sys.stdout, sys.stderr = old_stdout, old_stderr
+        sys.argv = oldargv
+        if e:
+            traceback.print_exception(t, e, tb)
+        
+    else:
+        cmd = [join(bindir, args[0])] + list(args[1:])
+        print('Running cmd:', file=sys.stderr)
+        print(' '.join(cmd), file=sys.stderr)
+        print('', file=sys.stderr)
+        p = Popen(cmd, shell=False, stdout=PIPE, stderr=PIPE)
+        out, log = p.communicate()
+        
+        if p.returncode != 0:
+            print("Program failed to run: %s" % p.returncode, file=sys.stderr)
+            print(' '.join(cmd), file=sys.stderr)
+        
     if filterdir is not None:
         from_, to_ = filterdir
         out = re.sub(re.escape(from_), to_, out)
         log = re.sub(re.escape(from_), to_, log)
-
-    if p.returncode != 0:
-        print >> sys.stderr, "Program failed to run: %s" % p.returncode
-        print >> sys.stderr, ' '.join(cmd)
 
     return out, log
 
@@ -63,6 +90,8 @@ def run_sfood(*args, **kw):
 
 def compare_expect(exp_stdout, exp_stderr, *args, **kw):
     out, err = run_sfood(*args, **kw)
+    print('stdout:\n',out)
+    print('stderr:\n',err)
 
     filterdir = kw.get('filterdir', None)
 
@@ -76,16 +105,17 @@ def compare_expect(exp_stdout, exp_stderr, *args, **kw):
             expected = re.sub(re.escape(from_), to_, expected)
 
         try:
+            text = text.replace(os.sep, '/')
             assert text == expected, ("Unexpected text: \n%s\n != \n%s\n" % (text, expected))
         except AssertionError:
-            print >> sys.stderr, "%s:" % name
-            print >> sys.stderr, "--------"
+            print("%s:" % name, file=sys.stderr)
+            print("--------", file=sys.stderr)
             sys.stderr.write(text)
-            print >> sys.stderr, "--------"
-            print >> sys.stderr
-            print >> sys.stderr, "expected:"
-            print >> sys.stderr, "--------"
+            print("--------", file=sys.stderr)
+            print("", file=sys.stderr)
+            print("expected:", file=sys.stderr)
+            print("--------", file=sys.stderr)
             sys.stderr.write(expected)
-            print >> sys.stderr, "--------"
+            print("--------", file=sys.stderr)
             raise
 

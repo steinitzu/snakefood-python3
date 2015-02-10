@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Detect import statements using the AST parser.
 
@@ -16,23 +18,23 @@ dependencies on anything.
 # This file is part of the Snakefood open source package.
 # See http://furius.ca/snakefood/ for licensing details.
 
+from snakefood.six import iteritems
 import sys, logging
-from os.path import *
 from operator import itemgetter
+from os.path import realpath, exists, basename, dirname
+from collections import defaultdict
 
 from snakefood.util import iter_pyfiles, setup_logging, def_ignores, is_python
 from snakefood.depends import output_depends
 from snakefood.find import find_dependencies
 from snakefood.find import ERROR_IMPORT, ERROR_SYMBOL, ERROR_UNUSED
-from snakefood.fallback.collections import defaultdict
-from snakefood.roots import *
-from snakefood.six import print_
+from snakefood.roots import find_roots, relfile
 
 
 
 def gendeps():
     import optparse
-    parser = optparse.OptionParser(__doc__.strip())
+    parser = optparse.OptionParser()
 
     parser.add_option('-i', '--internal', '--internal-only',
                       default=0, action='count',
@@ -91,7 +93,7 @@ def gendeps():
     if opts.print_roots:
         inroots = find_roots(args, opts.ignores)
         for dn in sorted(inroots):
-            print_(dn)
+            print(dn)
         return
 
     info("")
@@ -188,7 +190,7 @@ def gendeps():
     # the same roots.
     if opts.internal >= 2:
         filtfiles = type(allfiles)()
-        for from_, tolist in allfiles.iteritems():
+        for from_, tolist in iteritems(allfiles):
             filtfiles[from_] = set(x for x in tolist if x in allfiles or x == (None, None))
         allfiles = filtfiles
 
@@ -218,7 +220,7 @@ def gendeps():
     info("Found roots:")
 
     found_roots = set()
-    for key, files in allfiles.iteritems():
+    for key, files in iteritems(allfiles):
         found_roots.add(key[0])
         found_roots.update(map(itemgetter(0),files))
     if None in found_roots:

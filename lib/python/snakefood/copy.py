@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Read a snakefood dependencies file and copy all the files to a destination
 directory, using the same filename to its python root.
@@ -5,16 +7,17 @@ directory, using the same filename to its python root.
 # This file is part of the Snakefood open source package.
 # See http://furius.ca/snakefood/ for licensing details.
 
-import sys, os, logging, shutil
-from os.path import *
+import logging, shutil
+from os.path import exists, join, isdir, dirname
+import sys
+import os
+import optparse
 
 from snakefood.depends import read_depends, flatten_depends
-from snakefood.six import print_
 
 
 
 def main():
-    import optparse
     parser = optparse.OptionParser(__doc__.strip())
 
     parser.add_option('-o', '--overwrite', action='store_true',
@@ -52,7 +55,7 @@ def main():
         if not exists(destdir):
             os.makedirs(destdir)
 
-        print_('Copying: %s' % srcfn)
+        print('Copying: %s' % srcfn)
         if not exists(srcfn):
             logging.error("Could not copy file '%s'." % srcfn)
             continue
@@ -64,7 +67,7 @@ def main():
                 continue  # Not needed at the very root.
             initfn = join(root, '__init__.py')
             if not exists(initfn):
-                print_('Creating: %s' % initfn)
+                print('Creating: %s' % initfn)
                 f = open(initfn, 'w')
                 f.close()
 

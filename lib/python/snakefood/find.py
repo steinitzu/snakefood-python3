@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Parsing and finding routines.
 This could be considered the core of snakefood, and where all the complexity lives.
@@ -5,15 +7,16 @@ This could be considered the core of snakefood, and where all the complexity liv
 # This file is part of the Snakefood open source package.
 # See http://furius.ca/snakefood/ for licensing details.
 
-import sys, os, logging
-import compiler
-from compiler.visitor import ASTVisitor
-from compiler.ast import Discard, Const, AssName, List, Tuple
-from compiler.consts import OP_ASSIGN
-from os.path import *
+import logging
+import os
+from os.path import isdir, dirname, realpath, join
+import sys
+import ast
+from ast import NodeVisitor, List, Tuple, Name, Store, Str, Expr
 
 from snakefood.roots import find_package_root
 from snakefood.local import filter_unused_imports
+
 
 __all__ = ('find_dependencies', 'find_imports',
            'parse_python_source',
@@ -124,7 +127,7 @@ def find_imports(fn, verbose, ignores):
         yield (modname, lineno, islocal)
 
 
-class ImportVisitor(object):
+class ImportVisitor(NodeVisitor):
     """AST visitor for grabbing the import statements.
 
     This visitor produces a list of
@@ -138,17 +141,18 @@ class ImportVisitor(object):
         self.modules = []
         self.recent = []
 
-    def visitImport(self, node):
+    def visit_Import(self, node):
         self.accept_imports()
-        self.recent.extend((x[0], None, x[1] or x[0], node.lineno, 0)
+        self.recent.extend((x.name, None, x.asname or x.name, node.lineno, 0)
                            for x in node.names)
 
-    def visitFrom(self, node):
+    def visit_ImportFrom(self, node):
         self.accept_imports()
-        modname = node.modname
+        modname = node.module
         if modname == '__future__':
             return # Ignore these.
-        for name, as_ in node.names:
+        for alias in node.names:
+            name, as_ = alias.name, alias.asname            
             if name == '*':
                 # We really don't know...
                 mod = (modname, None, None, node.lineno, node.level)
@@ -167,32 +171,32 @@ class ImportVisitor(object):
     #  when a new version of the package is released. Package authors may also
     #  decide not to support it, if they don't see a use for importing * from
     #  their package.
-    def visitAssign(self, node):
-        lhs = node.nodes
+    def visit_Assign(self, node):
+        lhs = node.targets
         if (len(lhs) == 1 and
-            isinstance(lhs[0], AssName) and
-            lhs[0].name == '__all__' and
-            lhs[0].flags == OP_ASSIGN):
+            isinstance(lhs[0], Name) and
+            lhs[0].id == '__all__' and 
+            isinstance(lhs[0].ctx, Store)
+            ):
 
-            rhs = node.expr
+            rhs = node.value
             if isinstance(rhs, (List, Tuple)):
-                for namenode in rhs:
+                for namenode in rhs.elts:
                     # Note: maybe we should handle the case of non-consts.
-                    if isinstance(namenode, Const):
-                        modname = namenode.value
+                    if isinstance(namenode, Str):
+                        modname = namenode.s
                         mod = (modname, None, modname, node.lineno, 0)#node.level
                         self.recent.append(mod)
 
-    def default(self, node):
+    def generic_visit(self, node):
         pragma = None
         if self.recent:
-            if isinstance(node, Discard):
-                children = node.getChildren()
-                if len(children) == 1 and isinstance(children[0], Const):
-                    const_node = children[0]
-                    pragma = const_node.value
+            if isinstance(node, Expr) and isinstance(node.value, Str):
+                const_node = node.value
+                pragma = const_node.s
 
         self.accept_imports(pragma)
+        super(ImportVisitor,self).generic_visit(node)
 
     def accept_imports(self, pragma=None):
         self.modules.extend((m, r, l, n, lvl, pragma)
@@ -235,17 +239,6 @@ def get_local_names(found_imports):
             if lname is not None]
 
 
-class ImportWalker(ASTVisitor):
-    "AST walker that we use to dispatch to a default method on the visitor."
-
-    def __init__(self, visitor):
-        ASTVisitor.__init__(self)
-        self._visitor = visitor
-
-    def default(self, node, *args):
-        self._visitor.default(node)
-        ASTVisitor.default(self, node, *args)
-
 
 def parse_python_source(fn):
     """Parse the file 'fn' and return two things:
@@ -261,36 +254,36 @@ def parse_python_source(fn):
     try:
         contents = open(fn, 'rU').read()
         lines = contents.splitlines()
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         logging.error("Could not read file '%s'." % fn)
         return None, None
 
     # Convert the file to an AST.
     try:
-        ast = compiler.parse(contents)
-    except SyntaxError, e:
+        ast_ = ast.parse(contents)
+    except SyntaxError as e:
         err = '%s:%s: %s' % (fn, e.lineno or '--', e.msg)
         logging.error("Error processing file '%s':\n%s" %
                       (fn, err))
         return None, lines
-    except TypeError, e:
+    except TypeError as e:
         # Note: this branch untested, applied from a user-submitted patch.
         err = '%s: %s' % (fn, str(e))
         logging.error("Error processing file '%s':\n%s" %
                       (fn, err))
         return None, lines
 
-    return ast, lines
+    return ast_, lines
 
-def get_ast_imports(ast):
+def get_ast_imports(ast_):
     """
     Given an AST, return a list of module tuples for the imports found, in the
     form:
         (modname, remote-name, local-name, lineno, pragma)
     """
-    assert ast is not None
+    assert ast_ is not None
     vis = ImportVisitor()
-    compiler.walk(ast, vis, ImportWalker(vis))
+    vis.visit(ast_)
     found_imports = vis.finalize()
     return found_imports
 

@@ -17,8 +17,7 @@ scripts = list(filter(isfile, [join('bin', x) for x in os.listdir('bin')]))
 def read_version():
     try:
         return open('VERSION', 'r').readline().strip()
-    except IOError:
-        _, e, _ = sys.exc_info()
+    except IOError as e:
         raise SystemExit(
             "Error: you must run setup from the root directory (%s)" % str(e))
 
@@ -51,7 +50,7 @@ from the dependency list.
       author_email="blais@furius.ca",
       url="http://furius.ca/snakefood",
       package_dir = {'': 'lib/python'},
-      packages = ['snakefood', 'snakefood/fallback'],
+      packages = ['snakefood'],
       scripts=scripts
      )
 

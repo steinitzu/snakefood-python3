@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Read a snakefood dependencies file and output the list of all files.
 """
@@ -6,18 +8,15 @@ Read a snakefood dependencies file and output the list of all files.
 
 import sys
 from os.path import join
+import optparse
 
 from snakefood.depends import read_depends, flatten_depends
-from snakefood.six import print_
-
-
 
 def main():
-    import optparse
     parser = optparse.OptionParser(__doc__.strip())
     opts, args = parser.parse_args()
 
     depends = read_depends(sys.stdin)
     for droot, drel in flatten_depends(depends):
-        print_(join(droot, drel))
+        print(join(droot, drel))
 

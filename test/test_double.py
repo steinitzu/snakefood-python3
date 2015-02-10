@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Test using two dots in import syntax
 Reporter: Dan Fayette (fayetted at gmail), on 2012-07-26
@@ -21,19 +23,22 @@ Reporter: Dan Fayette (fayetted at gmail), on 2012-07-26
 >>> the next line that contained >>> import dir2.dir2.file2
 """
 
-from os.path import *
-from testsupport import *
+import snakefood.gendeps
+from .testsupport import data, compare_expect
+from os.path import join
 
 
 def test_double():
     "Test that the root directories are being calculated correctly."
 
     fn = join(data, 'double/double.py')
-    print 'Testing for: %s' % fn
+    print('Testing for: %s' % fn)
     compare_expect(fn.replace('.py', '.expect'), None,
-                   'sfood', fn, filterdir=(data, 'ROOT'))
+                   snakefood.gendeps.main, #'sfood', 
+                   fn, filterdir=(data, 'ROOT'))
 
     fn = join(data, 'double/invalid.py')
-    print 'Testing for: %s' % fn
+    print('Testing for: %s' % fn)
     compare_expect(fn.replace('.py', '.expect'), None,
-                   'sfood', fn, filterdir=(data, 'ROOT'))
+                   snakefood.gendeps.main, #'sfood', 
+                   fn, filterdir=(data, 'ROOT'))

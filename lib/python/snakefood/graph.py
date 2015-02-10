@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Read snakefood dependencies and output a visual graph.
 """
@@ -5,7 +7,7 @@ Read snakefood dependencies and output a visual graph.
 # See http://furius.ca/snakefood/ for licensing details.
 
 import sys, os
-from os.path import *
+from os.path import join
 
 from snakefood.depends import read_depends, eliminate_redundant_depends
 

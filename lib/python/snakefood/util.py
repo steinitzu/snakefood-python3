@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 """
 Various utilities, to iterate among files, global stuff, etc.
 """
@@ -5,7 +7,7 @@ Various utilities, to iterate among files, global stuff, etc.
 # See http://furius.ca/snakefood/ for licensing details.
 
 import os, logging, re
-from os.path import *
+from os.path import realpath, exists, isdir, join
 
 __all__ = ('is_python', 'def_ignores', 'iter_pyfiles', 'setup_logging',
            'filter_separate')

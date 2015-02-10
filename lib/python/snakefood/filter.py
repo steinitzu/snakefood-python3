@@ -1,14 +1,13 @@
+from __future__ import print_function, absolute_import
+
 """
 A helper module to build simple filter scripts.
 """
 
 import sys
-from os.path import join
-from snakefood.six import print_
-
+import optparse
 
 def do_filter(populate_parser=None):
-    import optparse
     parser = optparse.OptionParser(__doc__.strip())
     opts, args = parser.parse_args()
 
@@ -21,9 +20,4 @@ def do_filter(populate_parser=None):
             f = open(fn)
 
         for line in f.xreadlines():
-            try:
-                yield eval(line)
-            except Exception, e:
-                print_(e, sys.stderr)
-                raise SystemExit
-
+            yield eval(line)

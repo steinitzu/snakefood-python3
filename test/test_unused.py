@@ -1,9 +1,12 @@
+from __future__ import print_function, absolute_import
+
 """
 Test ignoring unused imports.
 """
 
-from os.path import *
-from testsupport import *
+import snakefood.gendeps
+from .testsupport import data, compare_expect
+from os.path import join
 
 
 _files = ['simple/unused.py']
@@ -13,8 +16,9 @@ def test_ignore_unused():
 
     for fn in _files:
         fn = join(data, fn)
-        print 'Testing ignore unused for: %s' % fn
+        print('Testing ignore unused for: %s' % fn)
         compare_expect(fn.replace('.py', '.expect'), None,
-                       'sfood', '--ignore-unused', fn, filterdir=(data, 'ROOT'))
+                       snakefood.gendeps.main, #'sfood', 
+                       '--ignore-unused', fn, filterdir=(data, 'ROOT'))
 
 

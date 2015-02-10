@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+from __future__ import print_function, absolute_import
+
 """Check for superfluous import statements in Python source code.
 
 This script is used to detect forgotten imports that are not used anymore. When
@@ -13,22 +14,21 @@ write it.
 # This file is part of the Snakefood open source package.
 # See http://furius.ca/snakefood/ for licensing details.
 
-# stdlib imports
-import sys, __builtin__, re
-from os.path import *
-import compiler
+import sys
+import re
+import ast
 
+from snakefood.six.moves import builtins
 from snakefood.util import def_ignores, iter_pyfiles
 from snakefood.find import parse_python_source, get_ast_imports
 from snakefood.find import check_duplicate_imports
-from snakefood.astpretty import printAst
-from snakefood.local import *
-from snakefood.six import print_
+from snakefood.local import filter_unused_imports, AssignVisitor,\
+    get_names_from_ast
 
 
 def main():
     import optparse
-    parser = optparse.OptionParser(__doc__.strip())
+    parser = optparse.OptionParser()
 
     parser.add_option('--debug', action='store_true',
                       help="Debugging output.")
@@ -55,10 +55,10 @@ def main():
     for fn in iter_pyfiles(args or ['.'], opts.ignores, False):
 
         # Parse the file.
-        ast, lines = parse_python_source(fn)
-        if ast is None:
+        ast_, lines = parse_python_source(fn)
+        if ast_ is None:
             continue
-        found_imports = get_ast_imports(ast)
+        found_imports = get_ast_imports(ast_)
 
         # Check for duplicate remote names imported.
         if opts.do_dups:
@@ -67,7 +67,7 @@ def main():
                 write("%s:%d:  Duplicate import '%s'\n" % (fn, lineno, lname))
 
         # Filter out the unused imports.
-        used_imports, unused_imports = filter_unused_imports(ast, found_imports)
+        used_imports, unused_imports = filter_unused_imports(ast_, found_imports)
 
         # Output warnings for the unused imports.
         for x in unused_imports:
@@ -86,7 +86,7 @@ def main():
         # (Optionally) Compute the list of names that are being assigned to.
         if opts.do_missing or opts.debug:
             vis = AssignVisitor()
-            compiler.walk(ast, vis)
+            vis.walk(ast_)
             assign_names = vis.finalize()
 
         # (Optionally) Check for potentially missing imports (this cannot be
@@ -94,18 +94,18 @@ def main():
         if opts.do_missing:
             defined = set(modname for modname, _, _, _, _, _ in used_imports)
             defined.update(x[0] for x in assign_names)
-            _, simple_names = get_names_from_ast(ast)
+            _, simple_names = get_names_from_ast(ast_)
             for name, lineno in simple_names:
-                if name not in defined and name not in __builtin__.__dict__:
+                if name not in defined and name not in builtins.__dict__:
                     write("%s:%d:  Missing import for '%s'\n" % (fn, lineno, name))
 
         # Print out all the schmoo for debugging.
         if opts.debug:
-            print_()
-            print_()
-            print_('------ Imported names:')
+            print()
+            print()
+            print('------ Imported names:')
             for modname, rname, lname, lineno, level, pragma in found_imports:
-                print_('%s:%d:  %s' % (fn, lineno, lname))
+                print('%s:%d:  %s' % (fn, lineno, lname))
 
             ## print_()
             ## print_()
@@ -120,17 +120,17 @@ def main():
             ##     print_('%s:%d:  %s' % (fn, lineno, name))
             ## print_()
 
-            print_()
-            print_()
-            print_('------ Assigned names:')
+            print()
+            print()
+            print('------ Assigned names:')
             for name, lineno in assign_names:
-                print_('%s:%d:  %s' % (fn, lineno, name))
+                print('%s:%d:  %s' % (fn, lineno, name))
 
-            print_()
-            print_()
-            print_('------ AST:')
-            printAst(ast, indent='    ', stream=sys.stdout, initlevel=1)
-            print_()
+            print()
+            print()
+            print('------ AST:')
+            print(ast.dump(ast_))
+            print()
 
 
 if __name__ == '__main__':
