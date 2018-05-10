@@ -69,7 +69,7 @@ def normpyfn(fn):
 
 def main():
     import optparse
-    parser = optparse.OptionParser(__doc__.strip())
+    parser = optparse.OptionParser((__doc__ or '').strip())
 
     parser.add_option('-f', '--full-pathnames', '--full', action='store_true',
                       help="Output the full pathnames, not just the relative.")
